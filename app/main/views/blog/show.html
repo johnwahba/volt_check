@@ -1,0 +1,18 @@
+<:Title>
+  {{ _title }}
+
+<:Body>
+  {{ if model && model.persistor && state == :loaded }}
+    <h1>{{ _title }}</h1>
+
+    <p>{{ _body }}</p>
+
+    {{ model._comments.each do |comment| }}
+      <:comments comment="{{ comment }}" />
+    {{ end }}
+
+    <:comments:new post="{{ model }}" />
+
+  {{ else }}
+    <p>Loading... {{ model.html_inspect }}</p>
+  {{ end }}
