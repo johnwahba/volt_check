@@ -1,0 +1,257 @@
+diff --git a/./app/main/config/routes.rb b/Users/johnwahba/todos4/app/main/config/routes.rb
+index 1caa03a..c4dde34 100644
+--- a/./app/main/config/routes.rb
++++ b/Users/johnwahba/todos4/app/main/config/routes.rb
+@@ -6,6 +6,15 @@ get '/about', _action: 'about'
+ get '/signup', _controller: 'user-templates', _action: 'signup'
+ get '/login', _controller: 'user-templates', _action: 'login'
+ 
++
++get "/blog/{{__id}}/edit", _controller: 'blog', _action: 'edit'
++get "/blog/{{__id}}", _controller: 'blog', _action: 'show'
++get "/blog/new", _controller: 'blog', _action: 'new'
++get "/blog", _controller: 'blog', _action: 'index'
++
++# The main route
++get '/'
++
+ # The main route, this should be last. It will match any params not
+ # previously matched.
+ get '/', {}
+diff --git a/Users/johnwahba/todos4/app/main/controllers/blog_controller.rb b/Users/johnwahba/todos4/app/main/controllers/blog_controller.rb
+new file mode 100644
+index 0000000..f415be9
+--- /dev/null
++++ b/Users/johnwahba/todos4/app/main/controllers/blog_controller.rb
+@@ -0,0 +1,28 @@
++class BlogController < Volt::ModelController
++  model :store
++  def index
++    self.model = :store
++  end
++
++  def show
++    store._posts.find(_id: params._id).then do |results|
++      self.model = results[0]
++    end
++  end
++
++  def new
++    self.model = store._posts.buffer
++  end
++
++  def edit
++    store._posts.find(_id: params._id).then do |result|
++      self.model = result[0].buffer
++    end
++  end
++
++  def save
++    res = model.save!.then do
++      go '/blog'
++    end
++  end
++end
+\ No newline at end of file
+diff --git a/Users/johnwahba/todos4/app/main/controllers/comments_controller.rb b/Users/johnwahba/todos4/app/main/controllers/comments_controller.rb
+new file mode 100644
+index 0000000..edf547d
+--- /dev/null
++++ b/Users/johnwahba/todos4/app/main/controllers/comments_controller.rb
+@@ -0,0 +1,15 @@
++class CommentsController < Volt::ModelController
++  def index
++    self.model = attrs.comment
++  end
++
++  def new
++    self.model = attrs.post._comments.buffer
++  end
++
++  def add_comment
++    if model.save!
++      new
++    end
++  end
++end
+diff --git a/Users/johnwahba/todos4/app/main/models/comment.rb b/Users/johnwahba/todos4/app/main/models/comment.rb
+new file mode 100644
+index 0000000..cdd1ef8
+--- /dev/null
++++ b/Users/johnwahba/todos4/app/main/models/comment.rb
+@@ -0,0 +1,4 @@
++class Comment < Volt::Model
++  validate :_name, presence: true
++  # validate :_body, length: 20
++end
+\ No newline at end of file
+diff --git a/Users/johnwahba/todos4/app/main/models/post.rb b/Users/johnwahba/todos4/app/main/models/post.rb
+new file mode 100644
+index 0000000..9b573bd
+--- /dev/null
++++ b/Users/johnwahba/todos4/app/main/models/post.rb
+@@ -0,0 +1,4 @@
++class Post < Volt::Model
++  validate :_title, length: 5
++  validate :_body, length: 20
++end
+\ No newline at end of file
+diff --git a/Users/johnwahba/todos4/app/main/views/.DS_Store b/Users/johnwahba/todos4/app/main/views/.DS_Store
+new file mode 100644
+index 0000000..5008ddf
+Binary files /dev/null and b/Users/johnwahba/todos4/app/main/views/.DS_Store differ
+diff --git a/Users/johnwahba/todos4/app/main/views/blog/edit.html b/Users/johnwahba/todos4/app/main/views/blog/edit.html
+new file mode 100644
+index 0000000..00cf7ac
+--- /dev/null
++++ b/Users/johnwahba/todos4/app/main/views/blog/edit.html
+@@ -0,0 +1,17 @@
++<:Title>
++  Edit {{ _title }}
++
++<:Body>
++  {{ if state != :loaded }}
++    <h1>Loading...</h1>
++  {{ else }}
++    <h1>{{ _title }}</h1>
++
++    <form e-submit="save" role="form">
++      <:fields:text value="{{ _title }}" label="Title:" />
++
++      <:fields:textarea value="{{ _body }}" label="Post:" />
++
++      <button>Save</button>
++    </form>
++  {{ end }}
+diff --git a/Users/johnwahba/todos4/app/main/views/blog/index.html b/Users/johnwahba/todos4/app/main/views/blog/index.html
+new file mode 100644
+index 0000000..11bb34d
+--- /dev/null
++++ b/Users/johnwahba/todos4/app/main/views/blog/index.html
+@@ -0,0 +1,20 @@
++<:Title>
++  My Blog
++
++<:Body>
++  <h1>My Blog</h1>
++
++  <p>
++    <a href="/blog/new">New Post</a>
++  </p>
++
++  {{ _posts.each do |post| }}
++    <h2><a href="/blog/{{ post._id }}">{{ post._title }}</a></h2>
++    <p>
++      <a href="/blog/{{ post._id }}/edit">edit</a> |
++      <a e-click="_posts.delete_at(index)">remove</a>
++    </p>
++
++    <p>{{ post._body }}</p>
++
++  {{ end }}
+diff --git a/Users/johnwahba/todos4/app/main/views/blog/new.html b/Users/johnwahba/todos4/app/main/views/blog/new.html
+new file mode 100644
+index 0000000..8d433bd
+--- /dev/null
++++ b/Users/johnwahba/todos4/app/main/views/blog/new.html
+@@ -0,0 +1,13 @@
++<:Title>
++  New Post 
++
++<:Body>
++  <h1>New Blog Post</h1>
++
++  <form e-submit="save" role="form">
++    <:fields:text value="{{ _title }}" label="Title:" />
++
++    <:fields:textarea value="{{ _body }}" label="Post:" />
++
++    <button>Save</button>
++  </form>
+diff --git a/Users/johnwahba/todos4/app/main/views/blog/show.html b/Users/johnwahba/todos4/app/main/views/blog/show.html
+new file mode 100644
+index 0000000..d3814d2
+--- /dev/null
++++ b/Users/johnwahba/todos4/app/main/views/blog/show.html
+@@ -0,0 +1,18 @@
++<:Title>
++  {{ _title }}
++
++<:Body>
++  {{ if model && model.persistor && state == :loaded }}
++    <h1>{{ _title }}</h1>
++
++    <p>{{ _body }}</p>
++
++    {{ model._comments.each do |comment| }}
++      <:comments comment="{{ comment }}" />
++    {{ end }}
++
++    <:comments:new post="{{ model }}" />
++
++  {{ else }}
++    <p>Loading... {{ model.html_inspect }}</p>
++  {{ end }}
+diff --git a/Users/johnwahba/todos4/app/main/views/comments/index.html b/Users/johnwahba/todos4/app/main/views/comments/index.html
+new file mode 100644
+index 0000000..cd27465
+--- /dev/null
++++ b/Users/johnwahba/todos4/app/main/views/comments/index.html
+@@ -0,0 +1,6 @@
++<hr />
++<p>
++  <b>{{ _name }}</b>
++  <a style="float: right;" e-click="model.parent.delete(model)">X</a>
++</p>
++<p>{{ _body }}</p>
+diff --git a/Users/johnwahba/todos4/app/main/views/comments/new.html b/Users/johnwahba/todos4/app/main/views/comments/new.html
+new file mode 100644
+index 0000000..2ba7937
+--- /dev/null
++++ b/Users/johnwahba/todos4/app/main/views/comments/new.html
+@@ -0,0 +1,7 @@
++
++  <form e-submit="add_comment" role="form">
++    <:fields:text value="{{ _name }}" label="Name:" />
++
++    <:fields:textarea value="{{ _body }}" />
++    <button>Add</button>
++  </form>
+diff --git a/./app/main/views/main/main.html b/Users/johnwahba/todos4/app/main/views/main/main.html
+index 3433859..13d0989 100644
+--- a/./app/main/views/main/main.html
++++ b/Users/johnwahba/todos4/app/main/views/main/main.html
+@@ -1,20 +1,20 @@
+ <:Title>
+-  {{ template main_path, "title", {controller_group: 'main'} }}
++  {{ template main_path, "title", { controller_group: 'main' } }}
+ 
+ <:Body>
+   <div class="container">
+     <div class="header">
+       <ul class="nav nav-pills pull-right">
+         <:nav href="/" text="Home" />
++        <:nav href="/blog" text="Blog" />
+         <:nav href="/about" text="About" />
+-        <:user-templates:menu />
+       </ul>
+-      <h3 class="text-muted">todos4</h3>
++      <h3 class="text-muted">Project name</h3>
+     </div>
+ 
+     <:volt:notices />
+ 
+-    {{ template main_path, 'body', {controller_group: 'main'} }}
++    {{ template main_path, 'body', { controller_group: 'main' } }}
+ 
+     <div class="footer">
+       <p>&copy; Company 2014</p>
+@@ -23,7 +23,7 @@
+   </div>
+ 
+ <:Nav>
+-  <li class="{{ if active_tab? }}active{{ end }}">
++  <li class="{{ if url.path.split('/')[1] == attrs.href.split('/')[1] }}active{{ end }}">
+     <a href="{{ attrs.href }}">{{ attrs.text }}</a>
+   </li>
+ 

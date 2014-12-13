@@ -1,3 +1,1 @@
-# Start your docs here.
-
-# See Volt docs at https://github.com/voltrb/volt/blob/master/Readme.md
+The diff containing the differences between this app and a new project are stored in the diff file
